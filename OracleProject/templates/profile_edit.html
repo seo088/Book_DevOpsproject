@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 프로필 편집</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <h1><a href="{{ url_for('home') }}">책먹는 여우</a></h1>
+            <nav>
+                <ul>
+                    <li id="auth-link"><a href="{{ url_for('mypage') }}">마이페이지</a></li>
+                    <li><a href="#">장르별</a></li>
+                    <li><a href="#">베스트셀러</a></li>
+                    <li><a href="#">신작</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="auth-main"> 
+        <div class="auth-container profile-edit-container">
+            <h2>프로필 편집</h2>
+
+            <form id="profile-edit-form" method="POST" action="{{ url_for('profile_edit') }}" enctype="multipart/form-data">
+                
+                <div class="section-divider">기본 정보 변경</div>
+                
+                <div class="profile-photo-area">
+                    <img id="preview-image"
+                         src="{{ url_for('static', filename='uploads/' + user.profile_image) if user.profile_image else '' }}"
+                         alt="프로필 이미지"
+                         class="profile-image-preview">
+
+                    <label for="profile_image" class="upload-label">사진 변경</label>
+                    <input type="file" id="profile_image" name="profile_image" hidden>
+                </div>
+
+                <script>
+                document.getElementById("profile_image").addEventListener("change", function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            document.getElementById("preview-image").src = e.target.result;
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+                </script>
+                <div class="input-group">
+                    <label for="user-nickname">닉네임</label>
+                    <input type="text" name="user_nickname" id="user-nickname" value="{{ user.nickname }}" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="user-email">이메일</label>
+                    <input type="email" name="user_email" id="user-email" value="{{ user.email }}" required>
+                </div>
+                
+                <div class="section-divider">비밀번호 변경</div>
+                
+                <p id="pw-change-error-message" class="error-message">
+                     {% if error_message_pw %}{{ error_message_pw }}{% endif %}
+                </p>
+
+                <div class="input-group">
+                    <label for="current-pw">현재 비밀번호</label>
+                    <input type="password" name="current_pw" id="current-pw" placeholder="현재 비밀번호">
+                </div>
+                
+                <div class="input-group">
+                    <label for="new-pw">새 비밀번호</label>
+                    <input type="password" name="new_pw" id="new-pw" placeholder="새 비밀번호">
+                </div>
+
+                <div class="input-group">
+                    <label for="new-pw-confirm">새 비밀번호 확인</label>
+                    <input type="password" name="new_pw_confirm" id="new-pw-confirm" placeholder="새 비밀번호 확인">
+                </div>
+
+
+                <button type="submit" class="auth-button">변경 사항 저장</button>
+                <a href="{{ url_for('mypage') }}" class="back-link">마이페이지로 돌아가기</a>
+            </form>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+    
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    <script>
+        document.getElementById('profile-image-upload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.querySelector('.profile-image-preview');
+                    preview.style.backgroundImage = `url('${e.target.result}')`;
+                    preview.textContent = ''; // '현재 사진' 텍스트 제거
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+    
+    </body>
+</html>
