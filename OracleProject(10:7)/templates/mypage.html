@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 마이페이지</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <button class="hamburger-menu" id="open-menu-btn">
+        <i class="fas fa-bars"></i>
+    </button>
+    <aside class="side-menu" id="side-menu"></aside>
+
+    <header>
+        <div class="container">
+            <h1><a href="{{ url_for('home') }}">책먹는 여우</a></h1>
+            <nav>
+                <ul>
+                    <li id="auth-link">
+                        {% if session.get('user_id') %}
+                            <a href="{{ url_for('mypage') }}">{{ session.get('nickname') }}님</a>
+                            <span class="separator">|</span>
+                            <a href="{{ url_for('logout') }}">로그아웃</a>
+                        {% else %}
+                            <a href="{{ url_for('login') }}">로그인</a>
+                            <span class="separator">|</span>
+                            <a href="{{ url_for('signup') }}">회원가입</a>
+                        {% endif %}
+                    </li>
+                    <li><a href="#">베스트셀러</a></li>
+                    <li><a href="#">신작</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for msg in messages %}
+            <p>{{ msg }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="mypage-main">
+        <div class="container">
+            <h2>마이페이지 대시보드</h2>
+
+            <section class="profile-summary">
+                <div class="profile-card">
+                    {% if user.profile_image %}
+                    <div class="profile-image-placeholder"
+                         style="background-image: url('{{ url_for('static', filename='uploads/' ~ user.profile_image) }}');">
+                    </div>
+                    {% else %}
+                    <div class="profile-image-placeholder">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    {% endif %}
+
+                    <div class="profile-info">
+                        <h3>{{ user.nickname }} 님</h3>
+                        <p class="subtext">{{ user.email }}</p>
+                        <div class="stats-bar">
+                            <span>읽은 책: <strong>{{ user.read_count | default(0) }}권</strong></span>
+                        </div>
+                    </div>
+
+                    <a href="{{ url_for('profile_edit') }}" class="edit-profile-btn">프로필 편집</a>
+                </div>
+            </section>
+
+            <nav class="mypage-tabs">
+                <button class="tab-btn active" data-tab="library">내 서재</button>
+                <button class="tab-btn" data-tab="social">소셜 & 팔로우</button>
+                <button class="tab-btn" data-tab="activity">활동 기록</button>
+                <button class="tab-btn" data-tab="settings">설정</button>
+            </nav>
+
+            <div class="tab-content-wrapper">
+                <div id="library" class="tab-pane active">
+                    <h3>내 서재: 독서 관리</h3>
+                    <div class="book-shelf">
+                        <h4>북마크 (읽을 책)</h4>
+                        <a href="#" class="list-move-btn">북마크 목록 전체 보기 <i class="fas fa-chevron-right"></i></a>
+                        <div class="book-list read-list">
+                            <div class="book-card book-bookmark">
+                                <div class="book-image-placeholder">[책 이미지]</div>
+                                <p class="book-title">읽고 싶은 책 A</p>
+                                <button class="action-btn small-btn">읽는 중으로 이동</button>
+                            </div>
+                            <div class="book-card book-bookmark">
+                                <div class="book-image-placeholder">[책 이미지]</div>
+                                <p class="book-title">읽고 싶은 책 B</p>
+                                <button class="action-btn small-btn">읽는 중으로 이동</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="book-shelf">
+                        <h4>읽은 책</h4>
+                        <a href="#" class="list-move-btn">읽은 책 목록 전체 보기 <i class="fas fa-chevron-right"></i></a>
+                        <div class="book-list read-list">
+                            <div class="book-card book-read">
+                                <div class="book-image-placeholder">[책 이미지]</div>
+                                <p class="book-title">도서1</p>
+                                <div class="record-icons">
+                                    <i class="fas fa-feather-alt" title="독후감 있음"></i>
+                                    <i class="fas fa-comment-dots" title="리뷰/별점 있음"></i>
+                                </div>
+                                <div class="rating-display">
+                                    <i class="fas fa-star"></i> 4.5점
+                                </div>
+                                <div class="activity-links">
+                                    <a href="#" class="action-btn small-btn">독후감 보기</a>
+                                    <a href="#" class="action-btn small-btn">리뷰/별점 보기</a>
+                                </div>
+                            </div>
+                            <div class="book-card book-read">
+                                <div class="book-image-placeholder">[책 이미지]</div>
+                                <p class="book-title">도서2</p>
+                                <div class="activity-links">
+                                    <a href="#" class="action-btn small-btn primary-btn">독후감 작성</a>
+                                    <a href="#" class="action-btn small-btn primary-btn">리뷰 작성</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-management-links">
+                            <a href="#" class="list-move-btn primary-move-btn">독후감 전체 목록 <i class="fas fa-chevron-right"></i></a>
+                            <a href="#" class="list-move-btn primary-move-btn">리뷰/별점 전체 목록 <i class="fas fa-chevron-right"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="social" class="tab-pane">
+                    <h3>소셜 & 팔로우</h3>
+                    <div class="social-management">
+                        <div class="follow-status">
+                            <span>팔로잉: —</span>
+                            <span>팔로워: —</span>
+                        </div>
+                        <div class="follow-section-container">
+                            <div class="follow-pane">
+                                <h4>내가 팔로우 하는 사람 (팔로잉)</h4>
+                                <ul class="follow-list">
+                                    <li>예시 사용자 A <button class="action-btn small-btn">팔로잉</button></li>
+                                </ul>
+                            </div>
+                            <div class="follow-pane">
+                                <h4>나를 팔로우 하는 사람 (팔로워)</h4>
+                                <ul class="follow-list">
+                                    <li>예시 사용자 B <button class="action-btn small-btn primary-btn">팔로우</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="activity" class="tab-pane">
+                    <h3>선호 태그 인터페이스</h3>
+                    <div class="tag-preference-area">
+                        <p>자주 사용하는 태그, 관심 있는 장르, 키워드를 관리해보세요.</p>
+                        <div class="tag-list">
+                            <span class="tag active-tag">#자기계발</span>
+                            <span class="tag">#판타지</span>
+                            <span class="tag active-tag">#역사</span>
+                            <span class="tag">#로맨스</span>
+                            <span class="tag add-tag-btn">+ 태그 추가</span>
+                        </div>
+                    </div>
+                    <h3>나의 최신 활동</h3>
+                    <ul class="activity-feed">
+                        <li>도서1에 별점 4.5점과 리뷰를 남겼습니다. (1시간 전)</li>
+                        <li>도서1 독서를 완료했습니다. (어제)</li>
+                        <li>리뷰 도서1을 스크랩했습니다. (2일 전)</li>
+                    </ul>
+                </div>
+
+                <div id="settings" class="tab-pane">
+                    <h3>계정 및 보안 설정</h3>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('active');
+                    if (pane.id === targetTab) pane.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
