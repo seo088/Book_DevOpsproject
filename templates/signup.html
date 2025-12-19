@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 회원가입</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+
+    <header class="main-header">
+        <div class="top-bar">
+            <div style="width: 45px;"></div> 
+
+            <h1 class="site-title">
+                <a href="{{ url_for('home') }}">책 먹는 여우</a>
+            </h1>
+
+            <div class="menu_name" style="visibility: hidden;"></div>
+
+            <div class="auth-links">
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('mypage') }}">{{ session.get('nickname') }}님</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('logout') }}">로그아웃</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">로그인</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('signup') }}" class="active">회원가입</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for msg in messages %}
+                    <p>{{ msg }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <main class="auth-main">
+        <div class="auth-container">
+            <h2>회원가입</h2>
+            <p class="auth-subtitle">책 먹는 여우의 새로운 가족이 되어주세요!</p>
+
+            <form id="signup-form" method="POST" action="{{ url_for('signup') }}">
+
+                <div class="input-group">
+                    <i class="fas fa-id-badge input-icon"></i>
+                    <input type="text" name="user_id" id="signup-id" placeholder="아이디"
+                        value="{{ form_data.get('user_id', '') }}" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-user-tag input-icon"></i>
+                    <input type="text" name="nickname" id="signup-nickname" placeholder="닉네임 (중복 불가)"
+                        value="{{ form_data.get('nickname', '') }}" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" name="email" id="signup-email" placeholder="이메일 주소"
+                        value="{{ form_data.get('email', '') }}" required>
+                </div>
+
+                <div class="input-group" style="margin-top: 20px;">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" name="password" id="signup-pw" placeholder="비밀번호" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-check-double input-icon"></i>
+                    <input type="password" name="password_confirm" id="signup-pw-confirm" placeholder="비밀번호 확인" required>
+                </div>
+
+                <button type="submit" class="auth-button">가입하기</button>
+            </form>
+
+            <p class="auth-footer-text">
+                이미 계정이 있으신가요? <a href="{{ url_for('login') }}">로그인 하러 가기</a>
+            </p>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

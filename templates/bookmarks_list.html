@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 북마크 목록</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* 북마크 목록 전용 추가 스타일 */
+        .bookmark-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .search-box-local {
+            position: relative;
+            flex-grow: 1;
+            max-width: 400px;
+        }
+
+        .search-box-local input {
+            width: 100%;
+            padding: 10px 35px 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-box-local input:focus {
+            border-color: #333;
+        }
+
+        .search-box-local i {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .sort-options select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #fff;
+        }
+        
+        .no-result-message {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #777;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="side-menu" id="side-menu">
+        <button class="close-menu-btn" id="close-menu-btn">&times;</button>
+        
+        <div class="side-profile-summary">
+            {% if session.get('user_id') %}
+                <div class="profile-info-side">
+                    <p class="side-nickname">{{ g.nickname | default('사용자') }}님</p>
+                    <div class="side-stats">
+                        <span class="stat-item">팔로잉: <strong>{{ g.side_stats.following | default(0) }}</strong></span>
+                        <span class="stat-item">팔로워: <strong>{{ g.side_stats.followers | default(0) }}</strong></span>
+                    </div>
+                </div>
+                <a href="{{ url_for('mypage') }}" class="action-btn primary-btn side-mypage-btn">마이페이지</a>
+            {% else %}
+                <div class="profile-info-side"><p class="side-nickname">로그인이 필요합니다</p></div>
+                <a href="{{ url_for('login') }}" class="action-btn secondary-btn side-mypage-btn">로그인 / 회원가입</a>
+            {% endif %}
+        </div>
+        
+        <nav class="side-nav">
+            <div class="side-menu-section">
+                <h3>
+                    <button class="menu-dropdown-btn" id="genre-filter-btn" style="width:100%; text-align:left; padding:0; background:none; border:none; color:#333; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        장르별 모아보기 <i class="fas fa-chevron-down transition-icon" id="genre-arrow"></i>
+                    </button>
+                </h3>
+                <div class="genre-filter-options" id="genre-filter-options" style="display:none; padding-top:10px;">
+                    <ul class="genre-list" style="list-style:none; padding-left:5px;">
+                        {% if all_tags_grouped and all_tags_grouped['장르'] %}
+                            {% for tag in all_tags_grouped['장르'] %}
+                                <li style="margin-bottom: 8px;">
+                                    <a href="{{ url_for('search_books', genre=tag) }}" class="genre-link" style="text-decoration:none; color:#555; font-size:14px; display:block; padding: 5px; border-radius:4px; transition:0.2s;">
+                                        <i class="fas fa-book" style="font-size:12px; margin-right:8px; color:#ff9f4b;"></i> {{ tag }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li style="color:#999; font-size:12px;">등록된 장르가 없습니다.</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>주요 메뉴</h3>
+                <ul>
+                    <li><a href="{{ url_for('new_releases') }}">신작</a></li>
+                    <li><a href="{{ url_for('bestseller') }}">베스트셀러</a></li>
+                    <li><a href="{{ url_for('bookspot') }}">북스팟</a></li>
+                </ul>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>내 서재</h3>
+                <ul>
+                    <li><a href="{{ url_for('books_read_list') }}">읽은 책 전체 목록</a></li>
+                    <li><a href="{{ url_for('bookmarks_list') }}">북마크 전체 목록</a></li>
+                    <li><a href="{{ url_for('essays_list') }}">독후감 전체 목록</a></li>
+                    <li><a href="{{ url_for('reviews_list') }}">리뷰 전체 목록</a></li>
+                </ul>
+            </div>
+            
+            <div class="side-menu-section">
+                <h3>커뮤니티</h3>
+                <ul><li><a href="{{ url_for('jeonbuk_events') }}">전북 도서 관련 행사</a></li></ul>
+            </div>
+        </nav>
+    </aside>
+
+    <header class="main-header">
+        <div class="top-bar">
+            <button class="hamburger-menu" id="open-menu-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1 class="site-title"><a href="{{ url_for('home') }}">책 먹는 여우</a></h1>
+            <div class="menu_name">
+                <a href="{{ url_for('new_releases') }}">신작</a>
+                <a href="{{ url_for('bestseller') }}">베스트셀러</a>
+                <a href="{{ url_for('bookspot') }}">북스팟</a>
+                <a href="{{ url_for('mypage') }}">내 서재</a>
+            </div>
+            <div class="auth-links">
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('mypage') }}">{{ g.nickname | default('사용자') }}님</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('logout') }}">로그아웃</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">로그인</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('signup') }}">회원가입</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="container" style="margin-top: 20px; max-width: 600px;">
+            <form action="{{ url_for('search_books') }}" method="get" class="search-container">
+                <input type="text" name="search_query" class="search-input" placeholder="제목, 저자, 또는 #태그로 검색해보세요" required>
+                <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </header>
+
+    <main class="mypage-main">
+        <div class="container">
+            <h2>{{ g.nickname | default('사용자') }}님의 북마크 목록</h2>
+            
+            <p class="bookmark-instruction"><i class="fas fa-bookmark"></i> 아직 읽지 않은, 읽고 싶은 책들을 모아두는 공간입니다.</p>
+            
+            <div class="bookmark-controls">
+                <div class="search-box-local">
+                    <input type="text" id="localSearchInput" placeholder="책 제목 또는 저자 검색...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="sort-options">
+                    <select id="sortSelect">
+                        <option value="added_desc">최신 추가순</option>
+                        <option value="added_asc">오래된 추가순</option>
+                        <option value="title_asc">제목순 (가나다)</option>
+                        <option value="title_desc">제목순 (역순)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="list-header">
+                <p class="total-count">총 <span id="bookmark-total-count">{{ bookmarks|length }}</span>권</p>
+            </div>
+
+            <section class="read-books-list-section" id="bookmarkListContainer">
+                {% if bookmarks %}
+                    {% for book in bookmarks %}
+                    <div class="read-book-item" 
+                         data-title="{{ book.title }}" 
+                         data-author="{{ book.author }}" 
+                         data-added="{{ book.added_at }}">
+                        
+                        <div class="book-image-placeholder small-cover">
+                            {% if book.cover %}
+                                <img src="{{ book.cover }}" alt="{{ book.title }} 표지" style="width:100%; height:100%; object-fit:cover;">
+                            {% else %}
+                                <span>[표지]</span>
+                            {% endif %}
+                        </div>
+                        <div class="book-info-read">
+                            <a href="{{ url_for('book_detail', book_isbn=book.id) }}" style="text-decoration: none; color: inherit;">
+                                <p class="book-title-sm">{{ book.title }}</p>
+                            </a>
+                            <p class="book-author-sm">{{ book.author }}</p>
+                            <div class="book-meta">
+                                <span class="meta-read-date">
+                                    <i class="fas fa-calendar-plus"></i> {{ book.added_at }} 추가
+                                </span>
+                            </div>
+                        </div>
+                        <div class="action-buttons-list">
+                            <a href="{{ url_for('book_detail', book_isbn=book.id) }}" class="action-btn small-btn">상세 보기</a>
+                            
+                            <button class="action-btn secondary-btn small-btn" onclick="deleteBookmark(event, '{{ book.id }}')">
+                                <i class="fas fa-trash-alt"></i> 삭제
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="no-result-message" id="noResultMessage">
+                        검색 결과가 없습니다.
+                    </div>
+                {% else %}
+                    <div class="no-record-message" style="text-align: center; padding: 40px; color: #777;">
+                        <p>아직 북마크한 책이 없습니다. 관심 있는 책을 찾아보세요!</p>
+                        <a href="{{ url_for('search_books') }}" class="action-btn primary-btn" style="margin-top:10px; display:inline-block;">책 검색하러 가기</a>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const IS_LOGGED_IN = {{ 'true' if session.get('user_id') else 'false' }};
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('localSearchInput');
+            const sortSelect = document.getElementById('sortSelect');
+            const container = document.getElementById('bookmarkListContainer');
+            const noResultMsg = document.getElementById('noResultMessage');
+            const visibleCountSpan = document.getElementById('bookmark-total-count');
+
+            if (container) {
+                const items = Array.from(container.getElementsByClassName('read-book-item'));
+
+                // 1. 검색 기능
+                if (searchInput) {
+                    searchInput.addEventListener('keyup', function() {
+                        const query = this.value.toLowerCase();
+                        let visibleCount = 0;
+
+                        items.forEach(item => {
+                            // DOM에서 삭제된 아이템은 건너뛰기
+                            if (!item.parentElement) return;
+
+                            const title = item.dataset.title.toLowerCase();
+                            const author = item.dataset.author.toLowerCase();
+                            
+                            if (title.includes(query) || author.includes(query)) {
+                                item.style.display = 'flex';
+                                visibleCount++;
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+
+                        if (noResultMsg) {
+                            if (visibleCount === 0 && items.length > 0) noResultMsg.style.display = 'block';
+                            else noResultMsg.style.display = 'none';
+                        }
+                        
+                        if (visibleCountSpan) visibleCountSpan.textContent = visibleCount;
+                    });
+                }
+
+                // 2. 정렬 기능
+                if (sortSelect) {
+                    sortSelect.addEventListener('change', function() {
+                        const sortValue = this.value;
+                        
+                        items.sort((a, b) => {
+                            const titleA = a.dataset.title;
+                            const titleB = b.dataset.title;
+                            const dateA = a.dataset.added || ""; 
+                            const dateB = b.dataset.added || "";
+
+                            if (sortValue === 'title_asc') return titleA.localeCompare(titleB);
+                            else if (sortValue === 'title_desc') return titleB.localeCompare(titleA);
+                            else if (sortValue === 'added_asc') return dateA.localeCompare(dateB);
+                            else if (sortValue === 'added_desc') return dateB.localeCompare(dateA);
+                            return 0;
+                        });
+
+                        items.forEach(item => {
+                            if(item.parentElement) container.insertBefore(item, noResultMsg);
+                        });
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

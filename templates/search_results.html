@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>검색 결과 - 책먹는 여우</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        .flash-messages-container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            display: block;
+        }
+        .flash-messages {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .content-area {
+            background-color: #ffffff !important;
+            position: relative;
+            z-index: 10;
+            padding-top: 20px;
+            min-height: 100vh;
+        }
+        .transition-icon { transition: transform 0.3s ease; }
+
+        /* 필터 배지 스타일 */
+        .active-filter-container {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .filter-badge {
+            background: #ff9f4b;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 3px 8px rgba(255,159,75,0.3);
+        }
+        .filter-badge a {
+            color: white;
+            text-decoration: none;
+            font-size: 20px;
+            line-height: 1;
+            transition: opacity 0.2s;
+        }
+        .filter-badge a:hover { opacity: 0.7; }
+    </style>
+</head>
+
+<body>
+    <aside class="side-menu" id="side-menu">
+        <button class="close-menu-btn" id="close-menu-btn">&times;</button>
+        
+        <div class="side-profile-summary">
+            {% if g.user_id %} 
+            <div class="profile-info-side">
+                <p class="side-nickname">{{ g.nickname }}님</p>
+                <div class="side-stats">
+                    <span class="stat-item">팔로잉: <strong>{{ g.side_stats.following | default(0) }}</strong></span>
+                    <span class="stat-item">팔로워: <strong>{{ g.side_stats.followers | default(0) }}</strong></span>
+                </div>
+            </div>
+            <a href="{{ url_for('mypage') }}" class="action-btn primary-btn side-mypage-btn">마이페이지</a>
+            {% else %}
+            <div class="profile-info-side">
+                <p class="side-nickname">로그인이 필요합니다</p>
+            </div>
+            <a href="{{ url_for('login') }}" class="action-btn secondary-btn side-mypage-btn">로그인 / 회원가입</a>
+            {% endif %}
+        </div>
+
+        <nav class="side-nav">
+            <div class="side-menu-section">
+                <h3>
+                    <button class="menu-dropdown-btn" id="genre-filter-btn" style="width:100%; text-align:left; padding:0; background:none; border:none; color:#333; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        장르별 모아보기 <i class="fas fa-chevron-down transition-icon" id="genre-arrow"></i>
+                    </button>
+                </h3>
+                <div class="genre-filter-options" id="genre-filter-options" style="display:none; padding-top:10px;">
+                    {% if sidebar_tags %}
+                        {% for category, tags in sidebar_tags.items() %}
+                            <div class="tag-category-group" style="margin-bottom: 15px;">
+                                <h4 style="font-size:13px; color:#ff9f4b; border-bottom:1px solid #eee; margin-bottom:5px; padding-bottom:3px;">{{ category }}</h4>
+                                <ul class="genre-list" style="list-style:none; padding-left:0; display:flex; flex-wrap:wrap; gap: 4px;">
+                                    {% for tag in tags %}
+                                        <li>
+                                            <a href="{{ url_for('search_books', genre=tag) }}" 
+                                               class="tag-pill" 
+                                               style="text-decoration:none; color:#555; font-size:12px; background:#f5f5f5; padding:4px 8px; border-radius:12px; display:inline-block; transition:0.2s;">
+                                                {{ tag }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <li style="color:#999; font-size:12px; padding: 10px;">등록된 장르가 없습니다.</li>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>주요 메뉴</h3>
+                <ul>
+                    <li><a href="{{ url_for('new_releases') }}">신작</a></li>
+                    <li><a href="{{ url_for('bestseller') }}">베스트셀러</a></li>
+                    <li><a href="{{ url_for('bookspot') }}">북스팟</a></li>
+                </ul>
+            </div>
+            <div class="side-menu-section">
+                <h3>내 서재</h3>
+                <ul>
+                    <li><a href="{{ url_for('books_read_list') }}">읽은 책 전체 목록</a></li>
+                    <li><a href="{{ url_for('bookmarks_list') }}">북마크 전체 목록</a></li>
+                    <li><a href="{{ url_for('essays_list') }}">독후감 전체 목록</a></li>
+                    <li><a href="{{ url_for('reviews_list') }}">리뷰 전체 목록</a></li>
+                </ul>
+            </div>
+        </nav>
+    </aside>
+
+    <header class="main-header">
+        <div class="top-bar">
+            <button class="hamburger-menu" id="open-menu-btn"><i class="fas fa-bars"></i></button>
+            <h1 class="site-title"><a href="{{ url_for('home') }}">책 먹는 여우</a></h1>
+            <div class="menu_name">
+                <a href="{{ url_for('new_releases') }}">신작</a>
+                <a href="{{ url_for('bestseller') }}">베스트셀러</a>
+                <a href="{{ url_for('bookspot') }}">북스팟</a>
+                <a href="{{ url_for('mypage') }}">내 서재</a>
+            </div>
+            <div class="auth-links">
+                {% if g.user_id %}
+                    <a href="{{ url_for('mypage') }}">{{ g.nickname }}님</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('logout') }}">로그아웃</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">로그인</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('signup') }}">회원가입</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    
+    <div class="flash-messages-container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for msg in messages %}<p>{{ msg }}</p>{% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <main class="content-area">
+        <section class="search-section1">
+            <div class="container" style="max-width: 700px; margin-bottom: 30px;">
+                
+                {% if current_genre %}
+                <div class="active-filter-container">
+                    <span style="font-size: 14px; color: #777; font-weight: bold;">적용된 필터:</span>
+                    <div class="filter-badge">
+                        #{{ current_genre }}
+                        <a href="{{ url_for('search_books', search_query=query) }}" title="필터 해제">&times;</a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <form action="{{ url_for('search_books') }}" method="GET" class="search-container">
+                    {% if current_genre %}
+                        <input type="hidden" name="genre" value="{{ current_genre }}">
+                    {% endif %}
+                    <input type="text" name="search_query" 
+                           placeholder="{% if current_genre %}'{{ current_genre }}' 내에서 검색...{% else %}제목, 저자, 또는 #태그를 검색해보세요...{% endif %}" 
+                           class="search-input" value="{{ query }}">
+                    <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+                </form>
+            </div>
+        </section>
+
+        <section class="search-results-section1">
+            {% if books %}
+            <div class="search-results-controls">
+                <h1>
+                    {% if current_genre and query %}
+                        <span style="color:#ff9f4b;">#{{ current_genre }}</span> 내 <span style="color:#333;">'{{ query }}'</span> 검색 결과
+                    {% elif current_genre %}
+                        <span style="color:#ff9f4b;">#{{ current_genre }}</span> 장르 도서 목록
+                    {% else %}
+                        '{{ query }}' 검색 결과
+                    {% endif %}
+                    (총 {{ books|length }}개)
+                </h1>
+                <div class="sort-option">
+                    <span class="sort-label">정렬 기준:</span>
+                    <strong class="current-sort">평점순</strong>
+                </div>
+            </div>
+
+            <div class="grid-card-list">
+                {% for book in books %}
+                <div class="book-card">
+                    <a href="{{ url_for('book_detail', book_isbn=book.id) }}" class="book-link">
+                        <div class="book-image-placeholder">
+                            {% if book.cover %}
+                                <img src="{{ book.cover }}" alt="{{ book.title }}" class="book-cover">
+                            {% else %}
+                                <span class="no-image">이미지 없음</span>
+                            {% endif %}
+                        </div>
+                        <div class="book-info">
+                            <p class="book-title"><strong>{{ book.title }}</strong></p>
+                            <p class="book-author">{{ book.author }}</p>
+                            <p class="book-publisher">{{ book.publisher }} | {{ (book.pubDate or '날짜미상')[:10] }}</p>
+                            <div class="rating-display" style="margin-top: 5px; font-weight: bold; color: #f39c12;">
+                                <i class="fas fa-star"></i> {{ book.rating | default(0.0) }}
+                            </div>
+                        </div>
+                    </a>
+
+                    <div class="card-action-row">
+                        <button class="icon-btn btn-bookmark {{ 'active' if book.is_bookmarked else '' }}" 
+                                data-isbn="{{ book.id }}" title="북마크">
+                            <i class="{{ 'fas' if book.is_bookmarked else 'far' }} fa-bookmark"></i>
+                        </button>
+                        
+                        <button class="icon-btn btn-read {{ 'active' if book.is_read else '' }}" 
+                                data-isbn="{{ book.id }}" title="읽은 책 등록">
+                            <i class="{{ 'fas' if book.is_read else 'far' }} fa-check-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="no-results-message" style="text-align: center; padding: 60px 0; background: #fff; border-radius: 12px; color: #888; border: 1px dashed #ddd;">
+                <i class="fas fa-exclamation-circle" style="font-size: 50px; margin-bottom: 20px; color: #eee;"></i>
+                <p>죄송합니다. <strong>'{{ query or current_genre }}'</strong>에 대한 검색 결과가 없습니다.<br>다른 키워드로 다시 시도해 보세요.</p>
+                <a href="{{ url_for('home') }}" style="display:inline-block; margin-top:20px; color:#ff9f4b; text-decoration:none; font-weight:bold;">홈으로 돌아가기</a>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const IS_LOGGED_IN = {{ 'true' if g.user_id else 'false' }};
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

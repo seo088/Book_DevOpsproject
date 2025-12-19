@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 마이페이지</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .transition-icon { transition: transform 0.3s ease; }
+        /* 마이페이지 전용 추가 스타일 */
+        .dash-review-card:hover { transform: translateY(-3px); transition: 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important; }
+        .activity-timeline { list-style: none; padding: 0; }
+        .activity-item { display: flex; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f5f5f5; }
+        .activity-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eee; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+    <aside class="side-menu" id="side-menu">
+        <button class="close-menu-btn" id="close-menu-btn">&times;</button>
+        
+        <div class="side-profile-summary">
+            {% if session.get('user_id') %}
+                <div class="profile-info-side">
+                    <p class="side-nickname">{{ g.nickname | default('사용자') }}님</p>
+                    <div class="side-stats">
+                        <span class="stat-item">팔로잉: <strong>{{ g.side_stats.following | default(0) }}</strong></span>
+                        <span class="stat-item">팔로워: <strong>{{ g.side_stats.followers | default(0) }}</strong></span>
+                    </div>
+                </div>
+                <a href="{{ url_for('mypage') }}" class="action-btn primary-btn side-mypage-btn">마이페이지</a>
+            {% else %}
+                <div class="profile-info-side"><p class="side-nickname">로그인이 필요합니다</p></div>
+                <a href="{{ url_for('login') }}" class="action-btn secondary-btn side-mypage-btn">로그인 / 회원가입</a>
+            {% endif %}
+        </div>
+        
+        <nav class="side-nav">
+            <div class="side-menu-section">
+                <h3>
+                    <button class="menu-dropdown-btn" id="genre-filter-btn" style="width:100%; text-align:left; padding:0; background:none; border:none; color:#333; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        장르별 모아보기 <i class="fas fa-chevron-down transition-icon" id="genre-arrow"></i>
+                    </button>
+                </h3>
+                <div class="genre-filter-options" id="genre-filter-options" style="display:none; padding-top:10px;">
+                    {% if sidebar_tags %}
+                        {% for category, tags in sidebar_tags.items() %}
+                            <div class="tag-category-group" style="margin-bottom: 15px;">
+                                <h4 style="font-size:13px; color:#ff9f4b; border-bottom:1px solid #eee; margin-bottom:5px; padding-bottom:3px;">{{ category }}</h4>
+                                <ul class="genre-list" style="list-style:none; padding-left:0; display:flex; flex-wrap:wrap; gap: 4px;">
+                                    {% for tag in tags %}
+                                        <li>
+                                            <a href="{{ url_for('search_books', genre=tag) }}" class="tag-pill" 
+                                               style="text-decoration:none; color:#555; font-size:12px; background:#f5f5f5; padding:4px 8px; border-radius:12px; display:inline-block; transition:0.2s;">
+                                                {{ tag }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <li style="color:#999; font-size:12px; padding: 10px;">등록된 장르가 없습니다.</li>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>주요 메뉴</h3>
+                <ul>
+                    <li><a href="{{ url_for('new_releases') }}">신작</a></li>
+                    <li><a href="{{ url_for('bestseller') }}">베스트셀러</a></li>
+                    <li><a href="{{ url_for('bookspot') }}">북스팟</a></li>
+                </ul>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>내 서재 (독서 관리)</h3>
+                <ul>
+                    <li><a href="{{ url_for('books_read_list') }}">읽은 책 전체 목록</a></li>
+                    <li><a href="{{ url_for('bookmarks_list') }}">북마크 전체 목록</a></li>
+                    <li><a href="{{ url_for('essays_list') }}">독후감 전체 목록</a></li>
+                    <li><a href="{{ url_for('reviews_list') }}">리뷰 전체 목록</a></li>
+                </ul>
+            </div>
+        
+            <div class="side-menu-section">
+                <h3>커뮤니티</h3>
+                <ul>
+                    <li><a href="{{ url_for('jeonbuk_events') }}">전북 도서 관련 행사</a></li>
+                </ul>
+            </div>
+        </nav>
+    </aside>
+
+    <header class="main-header">
+        <div class="top-bar">
+            <button class="hamburger-menu" id="open-menu-btn"><i class="fas fa-bars"></i></button>
+            <h1 class="site-title"><a href="{{ url_for('home') }}">책 먹는 여우</a></h1>
+            <div class="menu_name">
+                <a href="{{ url_for('new_releases') }}">신작</a>
+                <a href="{{ url_for('bestseller') }}">베스트셀러</a>
+                <a href="{{ url_for('bookspot') }}">북스팟</a>
+                <a href="{{ url_for('mypage') }}" class="active">내 서재</a>
+            </div>
+            <div class="auth-links">
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('mypage') }}">{{ g.nickname | default('사용자') }}님</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('logout') }}">로그아웃</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">로그인</a>
+                    <span class="separator">|</span>
+                    <a href="{{ url_for('signup') }}">회원가입</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for msg in messages %}<p>{{ msg }}</p>{% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <main class="mypage-main">
+        <div class="container">
+            <h2 style="margin-bottom: 30px;">마이페이지 대시보드</h2>
+
+            <section class="profile-summary">
+                <div class="profile-card">
+                    {% if user.profile_image %}
+                        <div class="profile-image-placeholder" style="background-image: url('{{ url_for('static', filename='uploads/' ~ user.profile_image) }}');"></div>
+                    {% else %}
+                        <div class="profile-image-placeholder"><i class="fas fa-user-circle"></i></div>
+                    {% endif %}
+
+                    <div class="profile-info">
+                        <h3>{{ user.nickname }} 님</h3>
+                        <p class="subtext">{{ user.email }}</p>
+                        <div class="stats-bar">
+                            <span>읽은 책: <strong>{{ user.read_count | default(0) }}권</strong></span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('profile_edit') }}" class="edit-profile-btn">프로필 편집</a>
+                </div>
+
+                <div class="tag-list-summary">
+                    <p class="tag-summary-title"><i class="fas fa-tags"></i> 선호 태그</p>
+                    <div class="tag-list">
+                        {% if user.preferred_tags %}
+                            {% for tag in user.preferred_tags %}<span class="tag active-tag">#{{ tag }}</span>{% endfor %}
+                        {% else %}
+                             <span class="tag inactive-tag" style="color:#aaa; font-size:13px;">선호 태그 정보가 없습니다.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <nav class="mypage-tabs">
+                <button class="tab-btn active" data-tab="library">내 서재</button>
+                <button class="tab-btn" data-tab="social">소셜 & 팔로우</button>
+                <button class="tab-btn" data-tab="activity">활동 기록</button>
+                <button class="tab-btn" data-tab="settings">설정</button>
+            </nav>
+
+            <div class="tab-content-wrapper">
+                <div id="library" class="tab-pane active">
+                    <div class="book-shelf">
+                        <div class="shelf-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h4>🔖 북마크 (최근 담은 책)</h4>
+                            <a href="{{ url_for('bookmarks_list') }}" class="list-move-btn">전체 보기 <i class="fas fa-chevron-right"></i></a>
+                        </div>
+                        <div class="book-list read-list">
+                            {% if bookmarks %}
+                                {% for book in bookmarks %}
+                                <div class="book-card book-bookmark">
+                                    <a href="{{ url_for('book_detail', book_isbn=book.id) }}">
+                                        <div class="book-image-placeholder">
+                                            <img src="{{ book.cover }}" style="width:100%; height:100%; object-fit:contain;">
+                                        </div>
+                                    </a>
+                                    <p class="book-title">{{ book.title }}</p>
+                                    <button class="action-btn small-btn" onclick="moveToReadFromMypage(event, '{{ book.id }}')" style="margin-top:10px;">읽은 책으로 이동</button>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="no-record-message">북마크한 책이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="book-shelf" style="margin-top: 40px;">
+                        <div class="shelf-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h4>✍️ 최근 작성한 리뷰</h4>
+                            <a href="{{ url_for('reviews_list') }}" class="list-move-btn">전체 보기 <i class="fas fa-chevron-right"></i></a>
+                        </div>
+                        <div class="dashboard-review-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                            {% if reviews %}
+                                {% for review in reviews %}
+                                <div class="dash-review-card" style="border:1px solid #eee; border-radius:10px; padding:15px; background:#fff; display:flex; gap:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                                    <img src="{{ review.cover }}" style="width:60px; height:85px; border-radius:4px; object-fit:cover;">
+                                    <div style="flex-grow:1; overflow:hidden;">
+                                        <p style="font-size:14px; font-weight:bold; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ review.title }}</p>
+                                        <div style="color:#f1c40f; font-size:12px; margin-bottom:5px;"><i class="fas fa-star"></i> {{ review.rating }}</div>
+                                        <p style="font-size:12px; color:#666; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">{{ review.content }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="no-record-message" style="grid-column: 1/-1;">작성한 리뷰가 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="book-shelf" style="margin-top: 40px;">
+                        <div class="shelf-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h4>📚 최근 작성한 독후감</h4>
+                            <a href="{{ url_for('essays_list') }}" class="list-move-btn">전체 보기 <i class="fas fa-chevron-right"></i></a>
+                        </div>
+                        <div class="dashboard-essay-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                            {% if essays %}
+                                {% for essay in essays %}
+                                <div class="dash-review-card" style="border:1px solid #eee; border-radius:10px; padding:15px; background:#fff; display:flex; gap:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); cursor:pointer;"
+                                     onclick="location.href='{{ url_for('essay_detail', book_id=essay.book_id) }}'">
+                                    <img src="{{ essay.cover }}" style="width:60px; height:85px; border-radius:4px; object-fit:cover;">
+                                    <div style="flex-grow:1; overflow:hidden;">
+                                        <p style="font-size:14px; font-weight:bold; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ essay.title }}</p>
+                                        <p style="font-size:12px; color:#666; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">{{ essay.excerpt }}</p>
+                                        <span style="font-size:11px; color:#ff9f4b; margin-top:5px; display:block;"><i class="fas fa-pen-fancy"></i> {{ essay.created_at }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="no-record-message" style="grid-column: 1/-1;">작성한 독후감이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div id="social" class="tab-pane">
+                    <h3>소셜 & 팔로우</h3>
+                    <div class="user-search-area" style="margin-bottom: 30px; background:#fcfcfc; padding:20px; border-radius:12px;">
+                        <h4 style="margin-bottom:15px;">친구 찾기</h4>
+                        <form id="user-search-form" class="search-container small-search-container">
+                            <input type="text" id="user-search-input" placeholder="친구의 닉네임을 입력하세요" class="search-input" required>
+                            <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+                        </form>
+                    </div>
+                    <div class="follow-status-card" style="display:flex; gap:40px; justify-content:center; padding:30px; background:white; border-radius:12px; border:1px solid #eee;">
+                        <div style="text-align:center; cursor:pointer;" onclick="openFollowListModal('{{ user.id }}', 'following')">
+                            <p style="color:#888; font-size:14px; margin-bottom:5px;">팔로잉</p>
+                            <p style="font-size:24px; font-weight:800; color:#333;">{{ g.side_stats.following | default(0) }}</p>
+                        </div>
+                        <div style="width:1px; background:#eee;"></div>
+                        <div style="text-align:center; cursor:pointer;" onclick="openFollowListModal('{{ user.id }}', 'followers')">
+                            <p style="color:#888; font-size:14px; margin-bottom:5px;">팔로워</p>
+                            <p style="font-size:24px; font-weight:800; color:#333;">{{ g.side_stats.followers | default(0) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="activity" class="tab-pane">
+                    <h3>나의 최신 활동</h3>
+                    {% if activities %}
+                        <ul class="activity-timeline">
+                            {% for act in activities %}
+                            <li class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="{{ act.icon }}" style="color:#ff9f4b;"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <p class="activity-text" style="font-size:14px;">{{ act.text | safe }}</p>
+                                    <span class="activity-date" style="font-size:12px; color:#aaa;">{{ act.date }}</span>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="no-record-message">활동 기록이 없습니다.</p>
+                    {% endif %}
+                </div>
+
+                <div id="settings" class="tab-pane">
+                    <h3>설정</h3>
+                    <div class="setting-group" style="background:white; padding:25px; border-radius:12px; border:1px solid #eee; margin-bottom:20px;">
+                        <h4 style="margin-bottom:20px; color:#333;"><i class="fas fa-eye"></i> 공개 설정</h4>
+                        {% set visibility_items = [
+                            ('review', '리뷰 목록 공개', user.visibility_review),
+                            ('essay', '독후감 목록 공개', user.visibility_essay),
+                            ('bookmark', '북마크 목록 공개', user.visibility_bookmark),
+                            ('follow', '팔로우 목록 공개', user.visibility_follow)
+                        ] %}
+                        {% for key, label, value in visibility_items %}
+                        <div class="setting-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #f9f9f9;">
+                            <span style="font-size:14px; color:#555;">{{ label }}</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="public_{{ key }}" {% if value == 'PUBLIC' %}checked{% endif %}
+                                       onchange="updatePrivacySetting('{{ key }}', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="setting-group danger-zone" style="background:#fff5f5; padding:25px; border-radius:12px; border:1px solid #ffebeb;">
+                        <h4 style="margin-bottom:20px; color:#e74c3c;"><i class="fas fa-exclamation-triangle"></i> 계정 관리</h4>
+                        <div class="setting-item" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:14px; color:#555;">로그아웃</span>
+                            <a href="{{ url_for('logout') }}" class="action-btn secondary-btn small-btn">로그아웃</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="reviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeReviewModal">&times;</span>
+            <h3>리뷰 작성</h3>
+            <p class="modal-book-title" id="modal-book-name" style="font-weight:bold; margin-bottom:15px; color:#ff9f4b;"></p>
+            <form id="review-form">
+                <input type="hidden" name="book_id" id="modalBookId">
+                <div class="rating-section" style="margin-bottom:15px; text-align:center;">
+                    <div class="stars-input">
+                        {% for i in range(1, 6) %}<i class="far fa-star star-icon" data-rating="{{ i }}"></i>{% endfor %}
+                    </div>
+                    <input type="hidden" name="rating" id="ratingValue" value="0">
+                </div>
+                <textarea name="content" placeholder="감상을 짧게 남겨주세요." rows="4" style="width:100%; border:1px solid #ddd; border-radius:8px; padding:10px; margin-bottom:15px;"></textarea>
+                <button type="submit" class="auth-button">리뷰 저장</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="followListModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn" id="closeFollowModal">&times;</span>
+            <h3 id="followModalTitle" style="margin-bottom:20px;">목록</h3>
+            <div id="followListContent" class="follow-list-container"></div>
+        </div>
+    </div>
+
+    <footer><p>&copy; 2025 책먹는 여우. All rights reserved.</p></footer>
+
+    <script>
+        const IS_LOGGED_IN = {{ 'true' if session.get('user_id') else 'false' }};
+        // 탭 로직
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                document.getElementById(targetTab).classList.add('active');
+            });
+        });
+
+        // 공개 설정 API 함수
+        function updatePrivacySetting(type, isPublic) {
+            const status = isPublic ? 'PUBLIC' : 'PRIVATE';
+            fetch('/api/update_privacy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: type, status: status })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('설정 변경 실패: ' + data.message);
+                    document.getElementById('public_' + type).checked = !isPublic;
+                }
+            }).catch(err => {
+                console.error(err);
+                alert('통신 오류');
+                document.getElementById('public_' + type).checked = !isPublic;
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

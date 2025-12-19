@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 북스팟</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        .bookspot-main { background-color: #f9f9f9; min-height: 100vh; display: flex; flex-direction: column; }
+        .bookspot-main .container { flex: 1; max-width: 1250px; width: 100%; margin: 0 auto; padding: 30px 20px; box-sizing: border-box; }
+        
+        /* 컨트롤 패널 디자인 */
+        .external-controls {
+            display: flex; flex-direction: column; gap: 15px;
+            margin-bottom: 20px; background: #fff; padding: 20px;
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;
+        }
+        .control-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .control-label { font-weight: 800; font-size: 14px; color: #333; min-width: 70px; margin-right: 5px; }
+        
+        .filter-btn { 
+            border: 1px solid #eee; background: #f8f8f8; padding: 8px 16px; 
+            border-radius: 20px; font-size: 13px; font-weight: 600; color: #555; 
+            cursor: pointer; transition: all 0.2s; 
+        }
+        .filter-btn:hover { background-color: #eee; transform: translateY(-1px); }
+        
+        /* 활성화 버튼 색상 */
+        .filter-btn.region-active { background-color: #555; color: #fff; border-color: #555; }
+        .filter-btn.active[data-type="all"] { background-color: #333; color: #fff; border-color: #333; }
+        .filter-btn.active[data-type="bookstore"] { background-color: #2b42f0; color: #fff; border-color: #2b42f0; }
+        .filter-btn.active[data-type="library"] { background-color: #ffb700; color: #fff; border-color: #ffb700; }
+
+        /* 지도 영역 */
+        .map-wrapper { 
+            width: 100%; 
+            height: 70vh; 
+            min-height: 500px;
+            border-radius: 15px; overflow: hidden; 
+            position: relative; z-index: 1; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #ddd; 
+        }
+        #kakao-map { width: 100%; height: 100%; }
+
+        /* 커스텀 핀 디자인 */
+        .custom-pin {
+            position: relative; width: 42px; height: 42px; background: white;
+            border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3); cursor: pointer; border: 3px solid white;
+            transition: transform 0.2s;
+        }
+        .custom-pin:hover { z-index: 100; transform: rotate(-45deg) scale(1.1); }
+        .pin-icon { transform: rotate(45deg); font-size: 20px; }
+        .pin-bookstore { background: #2b42f0; }
+        .pin-library { background: #ffb700; }
+
+        /* 커스텀 오버레이 (말풍선) */
+        .custom-overlay { 
+            background: white; border-radius: 12px; padding: 20px; width: 300px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2); position: relative; 
+            border: 1px solid #eee; white-space: normal; word-break: keep-all; 
+            z-index: 2000; font-family: 'Pretendard', sans-serif;
+            text-align: left;
+        }
+        .custom-overlay::after { 
+            content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); 
+            border-top: 8px solid white; border-left: 8px solid transparent; border-right: 8px solid transparent; 
+        }
+        
+        .overlay-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f5f5f5; }
+        .overlay-title { font-weight: 800; font-size: 17px; color: #333; line-height: 1.3; width: 90%; }
+        .overlay-close { color: #999; cursor: pointer; font-size: 16px; transition: 0.2s; padding: 2px; }
+        .overlay-close:hover { color: #333; }
+
+        .overlay-info-row { display: flex; align-items: flex-start; margin-bottom: 6px; font-size: 13px; color: #555; }
+        .overlay-icon { width: 18px; color: #aaa; margin-top: 2px; flex-shrink: 0; }
+        
+        .overlay-badge { display: inline-block; font-size: 11px; padding: 4px 8px; border-radius: 4px; margin-top: 10px; color: white; font-weight: 600; }
+        .bg-blue { background-color: #2b42f0; }
+        .bg-red { background-color: #ffb700; }
+
+        /* 내 위치 버튼 */
+        .my-location-btn {
+            position: absolute; bottom: 20px; right: 20px; z-index: 10;
+            background: white; border: none; width: 45px; height: 45px; border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; color: #333; transition: 0.2s;
+        }
+        .my-location-btn:hover { background: #f8f8f8; color: #ff9f4b; }
+
+        /* 사이드바 애니메이션 아이콘 */
+        .transition-icon { transition: transform 0.3s ease; }
+    </style>
+</head>
+<body>
+
+    <aside class="side-menu" id="side-menu">
+        <button class="close-menu-btn" id="close-menu-btn">&times;</button>
+        
+        <div class="side-profile-summary">
+            {% if g.user_id %} 
+            <div class="profile-info-side">
+                <p class="side-nickname">{{ g.nickname }}님</p>
+                <div class="side-stats">
+                    <span class="stat-item">팔로잉: <strong>{{ g.side_stats.following | default(0) }}</strong></span>
+                    <span class="stat-item">팔로워: <strong>{{ g.side_stats.followers | default(0) }}</strong></span>
+                </div>
+            </div>
+            <a href="{{ url_for('mypage') }}" class="action-btn primary-btn side-mypage-btn">마이페이지</a>
+            {% else %}
+            <div class="profile-info-side">
+                <p class="side-nickname">로그인이 필요합니다</p>
+            </div>
+            <a href="{{ url_for('login') }}" class="action-btn secondary-btn side-mypage-btn">로그인 / 회원가입</a>
+            {% endif %}
+        </div>
+
+        <nav class="side-nav">
+            <div class="side-menu-section">
+                <h3>
+                    <button class="menu-dropdown-btn" id="genre-filter-btn" style="width:100%; text-align:left; padding:0; background:none; border:none; color:#333; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        장르별 모아보기 <i class="fas fa-chevron-down transition-icon" id="genre-arrow"></i>
+                    </button>
+                </h3>
+                <div class="genre-filter-options" id="genre-filter-options" style="display:none; padding-top:10px;">
+                    {% if sidebar_tags %}
+                        {% for category, tags in sidebar_tags.items() %}
+                            <div class="tag-category-group" style="margin-bottom: 15px;">
+                                <h4 style="font-size:13px; color:#ff9f4b; border-bottom:1px solid #eee; margin-bottom:5px; padding-bottom:3px;">{{ category }}</h4>
+                                <ul class="genre-list" style="list-style:none; padding-left:0; display:flex; flex-wrap:wrap; gap: 4px;">
+                                    {% for tag in tags %}
+                                        <li>
+                                            <a href="{{ url_for('search_books', genre=tag) }}" class="tag-pill" 
+                                               style="text-decoration:none; color:#555; font-size:12px; background:#f5f5f5; padding:4px 8px; border-radius:12px; display:inline-block; transition:0.2s;">
+                                                {{ tag }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <li style="color:#999; font-size:12px; padding: 10px;">등록된 장르가 없습니다.</li>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>주요 메뉴</h3>
+                <ul>
+                    <li><a href="{{ url_for('new_releases') }}">신작</a></li>
+                    <li><a href="{{ url_for('bestseller') }}">베스트셀러</a></li>
+                    <li><a href="{{ url_for('bookspot') }}" class="active-link">북스팟</a></li>
+                </ul>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>내 서재 (독서 관리)</h3>
+                <ul>
+                    <li><a href="{{ url_for('books_read_list') }}">읽은 책 전체 목록</a></li>
+                    <li><a href="{{ url_for('bookmarks_list') }}">북마크 전체 목록</a></li>
+                    <li><a href="{{ url_for('essays_list') }}">독후감 전체 목록</a></li>
+                    <li><a href="{{ url_for('reviews_list') }}">리뷰 전체 목록</a></li>
+                </ul>
+            </div>
+        
+            <div class="side-menu-section">
+                <h3>커뮤니티</h3>
+                <ul>
+                    <li><a href="{{ url_for('jeonbuk_events') }}">전북 도서 관련 행사</a></li>
+                </ul>
+            </div>
+        </nav>
+    </aside>
+
+    <header class="main-header">
+        <div class="top-bar">
+            <button class="hamburger-menu" id="open-menu-btn"><i class="fas fa-bars"></i></button>
+
+            <h1 class="site-title"><a href="{{ url_for('home') }}">책 먹는 여우</a></h1>
+
+            <div class="menu_name">
+                <a href="{{ url_for('new_releases') }}">신작</a>
+                <a href="{{ url_for('bestseller') }}">베스트셀러</a>
+                <a href="{{ url_for('bookspot') }}" class="active">북스팟</a> 
+                <a href="{{ url_for('mypage') }}">내 서재</a>
+            </div>
+
+            <div class="auth-links">
+                {% if g.user_id %}
+                <a href="{{ url_for('mypage') }}">{{ g.nickname }}님</a>
+                <span class="separator">|</span>
+                <a href="{{ url_for('logout') }}">로그아웃</a>
+                {% else %}
+                <a href="{{ url_for('login') }}">로그인</a>
+                <span class="separator">|</span>
+                <a href="{{ url_for('signup') }}">회원가입</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="bookspot-main">
+        <div class="container">
+            <div class="map-header-section" style="margin-bottom: 20px;">
+                <h2 style="display:flex; align-items:center; gap:10px; font-size: 28px; color: #333;">
+                    <i class="fas fa-map-marked-alt" style="color:#ffb700;"></i> 북스팟 (Book Spot)
+                </h2>
+                <p class="text-muted" style="color: #666; margin-top: 5px;">전북 14개 시·군의 숨은 독립서점(📚)과 도서관(🏛️)을 찾아보세요.</p>
+            </div>
+
+            <div class="external-controls">
+                <div class="control-row">
+                    <span class="control-label"><i class="fas fa-map-marker-alt"></i> 지역 선택</span>
+                    <button class="filter-btn region-active" onclick="moveToRegion('jeonju', this)">전주</button>
+                    <button class="filter-btn" onclick="moveToRegion('iksan', this)">익산</button>
+                    <button class="filter-btn" onclick="moveToRegion('gunsan', this)">군산</button>
+                    <button class="filter-btn" onclick="moveToRegion('gimje', this)">김제</button>
+                    <button class="filter-btn" onclick="moveToRegion('namwon', this)">남원</button>
+                    <button class="filter-btn" onclick="moveToRegion('jeongeup', this)">정읍</button>
+                    <button class="filter-btn" onclick="moveToRegion('wanju', this)">완주</button>
+                    <button class="filter-btn" onclick="moveToRegion('muju', this)">무주</button>
+                    <button class="filter-btn" onclick="moveToRegion('gochang', this)">고창</button>
+                    <button class="filter-btn" onclick="moveToRegion('imsil', this)">임실</button>
+                    <button class="filter-btn" onclick="moveToRegion('sunchang', this)">순창</button>
+                    <button class="filter-btn" onclick="moveToRegion('jangsu', this)">장수</button>
+                    <button class="filter-btn" onclick="moveToRegion('buan', this)">부안</button>
+                    <button class="filter-btn" onclick="moveToRegion('jinan', this)">진안</button>
+                </div>
+                <div class="control-row" style="margin-top: 5px; border-top: 1px dashed #eee; padding-top: 10px;">
+                    <span class="control-label"><i class="fas fa-filter"></i> 필터</span>
+                    <button class="filter-btn active" data-type="all" onclick="filterMarkers('all')">전체보기</button>
+                    <button class="filter-btn" data-type="bookstore" onclick="filterMarkers('bookstore')">독립서점 (📚)</button>
+                    <button class="filter-btn" data-type="library" onclick="filterMarkers('library')">도서관 (🏛️)</button>
+                </div>
+            </div>
+
+            <div class="map-wrapper">
+                <div id="kakao-map"></div>
+                <button class="my-location-btn" onclick="moveToMyLocation()" title="내 위치로 이동">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_key }}&libraries=services"></script>
+    
+    <script>
+    // 지도 및 마커 로직 (기존 유지)
+    var markers = [];
+    var map;
+    var currentOverlay = null;
+
+    const regionCoords = {
+        'jeonju': { lat: 35.8242, lng: 127.1480 }, 'iksan': { lat: 35.9484, lng: 126.9576 },
+        'gunsan': { lat: 35.9676, lng: 126.7366 }, 'gimje': { lat: 35.8034, lng: 126.8808 },
+        'namwon': { lat: 35.4163, lng: 127.3904 }, 'jeongeup': { lat: 35.5699, lng: 126.8520 },
+        'wanju': { lat: 35.9048, lng: 127.1607 }, 'muju': { lat: 36.0068, lng: 127.6607 },
+        'gochang': { lat: 35.4358, lng: 126.7020 }, 'imsil': { lat: 35.6177, lng: 127.2891 },
+        'sunchang': { lat: 35.3743, lng: 127.1374 }, 'jangsu': { lat: 35.6473, lng: 127.5215 },
+        'buan': { lat: 35.7317, lng: 126.7333 }, 'jinan': { lat: 35.7917, lng: 127.4250 }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var mapContainer = document.getElementById('kakao-map'); 
+        if (!window.kakao || !window.kakao.maps) {
+            mapContainer.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#888;">지도를 불러올 수 없습니다.</div>';
+            return;
+        }
+
+        var mapOption = { center: new kakao.maps.LatLng(35.8242, 127.1480), level: 9 };
+        map = new kakao.maps.Map(mapContainer, mapOption); 
+
+        fetch('/api/locations')
+            .then(res => res.json())
+            .then(data => { data.forEach(place => addMarker(place)); })
+            .catch(err => { console.error("지도 데이터 로드 실패:", err); });
+    });
+
+    function addMarker(place) {
+        var markerElement = document.createElement('div');
+        var pinClass = (place.type === 'bookstore') ? 'pin-bookstore' : 'pin-library';
+        var pinIcon = (place.type === 'bookstore') ? '📚' : '🏛️';
+        markerElement.innerHTML = `<div class="custom-pin ${pinClass}"><div class="pin-icon">${pinIcon}</div></div>`;
+
+        var marker = new kakao.maps.CustomOverlay({ 
+            position: new kakao.maps.LatLng(place.lat, place.lng), content: markerElement, map: map, yAnchor: 1.1 
+        });
+        markers.push({ marker: marker, type: place.type });
+
+        markerElement.onclick = function() {
+            if (currentOverlay) currentOverlay.setMap(null);
+            var addr = (place.address || "").replace('전북특별자치도 ', '').replace('전라북도 ', '');
+            var content = `
+                <div class="custom-overlay">
+                    <div class="overlay-header">
+                        <span class="overlay-title">${pinIcon} ${place.title}</span>
+                        <i class="fas fa-times overlay-close" onclick="closeOverlay()"></i>
+                    </div>
+                    <div class="overlay-body">
+                        <div class="overlay-info-row"><i class="fas fa-map-marker-alt overlay-icon"></i> ${addr}</div>
+                        <div class="overlay-info-row"><i class="fas fa-phone overlay-icon"></i> ${place.phone || '정보 없음'}</div>
+                        ${place.type === 'bookstore' ? `<div class="overlay-info-row"><i class="fas fa-clock overlay-icon"></i> ${place.hours}</div>` : ''}
+                        ${place.sns ? `<div style="margin-top:10px;"><a href="${place.sns}" target="_blank" style="color:#2b42f0;font-size:13px;text-decoration:none;">🔗 상세 정보</a></div>` : ''}
+                        <span class="overlay-badge ${place.type === 'bookstore' ? 'bg-blue' : 'bg-red'}">${place.type === 'bookstore' ? '독립서점' : '도서관'}</span>
+                    </div>
+                </div>`;
+            currentOverlay = new kakao.maps.CustomOverlay({ content: content, map: map, position: new kakao.maps.LatLng(place.lat, place.lng), yAnchor: 1.25 });
+            map.panTo(new kakao.maps.LatLng(place.lat, place.lng));
+        };
+    }
+
+    window.closeOverlay = () => { if (currentOverlay) currentOverlay.setMap(null); };
+    window.filterMarkers = (type) => {
+        document.querySelectorAll('.filter-btn[data-type]').forEach(btn => btn.classList.toggle('active', btn.dataset.type === type));
+        markers.forEach(item => item.marker.setMap((type === 'all' || item.type === type) ? map : null));
+    };
+    window.moveToRegion = (city, btn) => {
+        document.querySelectorAll('.filter-btn:not([data-type])').forEach(b => b.classList.remove('region-active'));
+        btn.classList.add('region-active');
+        map.panTo(new kakao.maps.LatLng(regionCoords[city].lat, regionCoords[city].lng));
+    };
+    window.moveToMyLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(p => map.panTo(new kakao.maps.LatLng(p.coords.latitude, p.coords.longitude)));
+        }
+    };
+    </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책먹는 여우 - 읽은 책 목록</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* bestseller.html 스타일 대응 */
+        .transition-icon { transition: transform 0.3s ease; }
+        .genre-link:hover {
+            background-color: #f0f0f0;
+            color: #ff9f4b !important;
+            padding-left: 10px !important;
+        }
+
+        /* 별점 표시용 스타일 */
+        .stars-input { cursor: pointer; display: inline-block; }
+        .stars-input .fa-star { font-size: 1.5rem; color: #ccc; transition: color 0.2s; }
+        .stars-input .fa-star.active { color: #FFA500; }
+        .stars-input .fa-star.filled { color: #FFA500; } /* script.js 대응 */
+        .stars-input .fa-star-half-alt.filled { color: #FFA500; }
+
+        /* 사이드바 애니메이션 */
+        .side-menu { transform: translateX(-100%); transition: 0.3s; }
+        .side-menu.active { transform: translateX(0); }
+    </style>
+</head>
+<body>
+
+    <aside class="side-menu" id="side-menu">
+        <button class="close-menu-btn" id="close-menu-btn">&times;</button>
+        
+        <div class="side-profile-summary">
+            {% if g.user_id %}
+                <div class="profile-info-side">
+                    <p class="side-nickname">{{ g.nickname }}님</p>
+                    <div class="side-stats">
+                        <span class="stat-item">팔로잉: <strong>{{ side_stats.following | default(0) }}</strong></span>
+                        <span class="stat-item">팔로워: <strong>{{ side_stats.followers | default(0) }}</strong></span>
+                    </div>
+                </div>
+                <a href="{{ url_for('mypage') }}" class="action-btn primary-btn side-mypage-btn">마이페이지</a>
+            {% else %}
+                <div class="profile-info-side">
+                    <p class="side-nickname">로그인이 필요합니다</p>
+                </div>
+                <a href="{{ url_for('login') }}" class="action-btn secondary-btn side-mypage-btn">로그인 / 회원가입</a>
+            {% endif %}
+        </div>
+        
+        <nav class="side-nav">
+            <div class="side-menu-section">
+                <h3>
+                    <button class="menu-dropdown-btn" id="genre-filter-btn" type="button" style="width:100%; text-align:left; padding:0; background:none; border:none; color:#333; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        장르별 모아보기 <i class="fas fa-chevron-down transition-icon" id="genre-arrow"></i>
+                    </button>
+                </h3>
+                
+                <div class="genre-filter-options" id="genre-filter-options" style="display:none; padding-top:10px;">
+                    <ul class="genre-list" style="list-style:none; padding-left:5px;">
+                        {% if all_tags_grouped %}
+                            {% for category, tags in all_tags_grouped.items() %}
+                                <li style="margin-bottom: 8px; font-weight:bold; color:#333; font-size:13px; margin-top:10px;">
+                                    {{ category }}
+                                </li>
+                                {% for tag in tags %}
+                                <li style="margin-bottom: 4px; padding-left:10px;">
+                                    <a href="{{ url_for('search_books', genre=tag) }}" class="genre-link" style="text-decoration:none; color:#555; font-size:13px; display:block; padding: 4px; border-radius:4px; transition:0.2s;">
+                                        - {{ tag }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            {% endfor %}
+                        {% else %}
+                            <li style="color:#999; font-size:12px;">등록된 태그가 없습니다.</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>주요 메뉴</h3>
+                <ul>
+                    <li><a href="{{ url_for('new_releases') }}">신작</a></li>
+                    <li><a href="{{ url_for('bestseller') }}">베스트셀러</a></li>
+                    <li><a href="{{ url_for('bookspot') }}">북스팟</a></li>
+                </ul>
+            </div>
+
+            <div class="side-menu-section">
+                <h3>내 서재 (독서 관리)</h3>
+                <ul>
+                    <li><a href="{{ url_for('books_read_list') }}" class="active-link">읽은 책 전체 목록</a></li>
+                    <li><a href="{{ url_for('bookmarks_list') }}">북마크 전체 목록</a></li>
+                    <li><a href="{{ url_for('essays_list') }}">독후감 전체 목록</a></li>
+                    <li><a href="{{ url_for('reviews_list') }}">리뷰 전체 목록</a></li>
+                </ul>
+            </div>
+        
+            <div class="side-menu-section">
+                <h3>커뮤니티</h3>
+                <ul>
+                    <li><a href="{{ url_for('jeonbuk_events') }}">전북 도서 관련 행사</a></li>
+                </ul>
+            </div>
+        </nav>
+    </aside>
+
+    <header class="main-header">
+        <div class="top-bar">
+            <button class="hamburger-menu" id="open-menu-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1 class="site-title"><a href="{{ url_for('home') }}">책 먹는 여우</a></h1>
+            <div class="menu_name">
+                <a href="{{ url_for('new_releases') }}">신작</a>
+                <a href="{{ url_for('bestseller') }}">베스트셀러</a>
+                <a href="{{ url_for('bookspot') }}">북스팟</a>
+                <a href="{{ url_for('mypage') }}">내 서재</a>
+            </div>
+            <div class="auth-links">
+                {% if g.user_id %}
+                <a href="{{ url_for('mypage') }}">{{ g.nickname }}님</a>
+                <span class="separator">|</span>
+                <a href="{{ url_for('logout') }}">로그아웃</a>
+                {% else %}
+                <a href="{{ url_for('login') }}">로그인</a>
+                <span class="separator">|</span>
+                <a href="{{ url_for('signup') }}">회원가입</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for msg in messages %}
+        <p>{{ msg }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="mypage-main">
+        <div class="container">
+            <h2>{{ g.nickname | default('사용자') }}님의 독서 기록</h2>
+            <p class="instruction-text"><i class="fas fa-book-reader"></i> 독서를 완료한 책들의 기록입니다.</p>
+
+            <div class="list-header read-list-header">
+                <p class="total-count">총 <span id="total-read-count">{{ books | length | default(0) }}</span>권의 독서 기록</p>
+                <div class="sort-by">
+                    <label for="sort-select-read">정렬:</label>
+                    <select id="sort-select-read" class="sort-select">
+                        <option value="latest_read">최근에 읽은 순</option>
+                    </select>
+                </div>
+            </div>
+
+            <section class="read-books-list-section">
+                {% if books %}
+                    {% for book in books %}
+                    <div class="read-book-item">
+                        <a href="{{ url_for('book_detail', book_isbn=book.id) }}" class="book-link-cover">
+                            <div class="book-image-placeholder small-cover">
+                                {% if book.cover %}
+                                    <img src="{{ book.cover }}" alt="{{ book.title }} 표지" style="width: 100%; height: 100%; object-fit: contain;">
+                                {% else %}
+                                    <div style="display:flex; align-items:center; justify-content:center; height:100%; background:#eee; color:#aaa;">
+                                        <i class="fas fa-book fa-2x"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </a>
+
+                        <div class="book-info-read">
+                            <a href="{{ url_for('book_detail', book_isbn=book.id) }}">
+                                <p class="book-title-sm link-hover">{{ book.title }}</p>
+                            </a>
+                            <p class="book-author-sm">{{ book.author }}</p>
+                            <div class="book-meta">
+                                <span class="meta-read-date">
+                                    <i class="far fa-calendar-alt"></i> 
+                                    {{ book.read_at }} 읽음
+                                </span>
+                                <span class="meta-rating">
+                                    {% if book.rating %}
+                                        {% for i in range(1, 6) %}
+                                            {% if i <= book.rating %}
+                                                <i class="fas fa-star" style="color: #FFA500;"></i>
+                                            {% else %}
+                                                <i class="far fa-star" style="color: #ccc;"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="color:#aaa; font-size:0.9em;">평가 없음</span>
+                                    {% endif %}
+                                </span>
+                                <div class="badges" style="margin-top: 5px;">
+                                    {% if book.has_essay %}
+                                        <span class="record-badge essay-badge">독후감 O</span>
+                                    {% endif %}
+                                    {% if book.has_review %}
+                                        <span class="record-badge review-badge">리뷰 O</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="action-buttons-list">
+                            {% if book.has_essay %}
+                                <a href="{{ url_for('essay_detail', book_id=book.id) }}" class="action-btn secondary-btn small-btn"><i class="fas fa-edit"></i> 독후감 수정</a>
+                            {% else %}
+                                <a href="{{ url_for('essay_detail', book_id=book.id) }}" class="action-btn secondary-btn small-btn"><i class="fas fa-pen-fancy"></i> 독후감 쓰기</a>
+                            {% endif %}
+    
+                            <a href="javascript:void(0);" onclick="openReviewModal('{{ book.id }}', '{{ book.title }}', event)" class="action-btn {{ 'secondary-btn' if book.rating else 'primary-btn' }} small-btn">
+                                <i class="fas {{ 'fa-edit' if book.rating else 'fa-star' }}"></i> {{ '리뷰 수정' if book.rating else '리뷰 쓰기' }}
+                            </a>
+
+                            <button class="action-btn small-btn danger-btn-text" onclick="deleteReadBook(event, '{{ book.id }}')">
+                                <i class="fas fa-trash-alt"></i> 삭제
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-record-message" style="text-align: center; padding: 40px; color: #777;">아직 독서 기록이 없습니다.</p>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <div id="reviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeReviewModal">&times;</span>
+            <h3>리뷰 및 별점 작성</h3>
+            <p class="modal-book-title">도서명: <span id="modal-book-name"></span></p>
+            
+            <form id="review-form">
+                <input type="hidden" name="book_id" id="modalBookId">
+                <div class="rating-section">
+                    <label>나의 별점:</label>
+                    <div class="stars-input">
+                        <i class="far fa-star star-icon" data-rating="1"></i>
+                        <i class="far fa-star star-icon" data-rating="2"></i>
+                        <i class="far fa-star star-icon" data-rating="3"></i>
+                        <i class="far fa-star star-icon" data-rating="4"></i>
+                        <i class="far fa-star star-icon" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" name="rating" id="ratingValue" value="0">
+                </div>
+                <textarea name="content" placeholder="다른 독자들을 위해 짧은 리뷰를 남겨주세요 (최대 1000자, 공개됩니다)." rows="4"></textarea>
+                <button type="submit" class="auth-button">리뷰 등록</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 책먹는 여우. All rights reserved.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
